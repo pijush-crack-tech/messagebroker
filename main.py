@@ -3,18 +3,23 @@
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+from rooms.controller import RoomController
+
+from rooms.model import Room
 from user.models import User
 from fastapi.middleware.cors import CORSMiddleware
 
 from user.views import router
+from rooms.views import room_router
 from cassandra.cqlengine.management import sync_table
 import db
 from websocket_manager import WebSocketManager
 
 app = FastAPI()
-all_db_models = [User]
+all_db_models = [User,Room]
 
 app.include_router(router,tags=["data"])
+app.include_router(room_router,tags=["room"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -78,40 +83,10 @@ async def get():
 async def root():
     return {"message": "Hello World"}
 
-socket_manager = WebSocketManager()
+# socket_manager = WebSocketManager()
+room_controller = RoomController()
 
-@app.websocket("/ws/{room_id}/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: int):
-    print(room_id)
-    await socket_manager.add_user_to_room(room_id, websocket)
-    message = {
-        "user_id": user_id,
-        "room_id": room_id,
-        "message": f"User {user_id} connected to room - {room_id}"
-    }
-    await socket_manager.broadcast_to_room(room_id, json.dumps(message))
-    try:
-        while True:
-            data = await websocket.receive_text()
-            message = {
-                "user_id": user_id,
-                "room_id": room_id,
-                "message": data
-            }
-            await socket_manager.broadcast_to_room(room_id, json.dumps(message))
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: int):
 
-    except WebSocketDisconnect:
-        await socket_manager.remove_user_from_room(room_id, websocket)
-
-        message = {
-            "user_id": user_id,
-            "room_id": room_id,
-            "message": f"User {user_id} disconnected from room - {room_id}"
-        }
-        await socket_manager.broadcast_to_room(room_id, json.dumps(message))
-
-# async def websocket_endpoint(websocket: WebSocket):
-#     await websocket.accept()
-#     while True:
-#         data = await websocket.receive_text()
-#         await websocket.send_text(f"Message text was: {data}")
+    await room_controller.create_or_get_last_room(user_id,websocket)

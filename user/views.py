@@ -17,5 +17,4 @@ async def create_user(user : CreateUser):
         name = user.name,
         mobile = user.mobile
     )
-
     return {"id" : id}

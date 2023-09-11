@@ -5,6 +5,11 @@ from redis_pub_sub_manager import RedisPubSubManager
 
 class WebSocketManager:
 
+    # def __init__(self) -> None:
+    #     super().__init__()
+    #     self.rooms: dict = {}
+    #     self.pubsub_client = RedisPubSubManager()
+
     def __init__(self):
         """
         Initializes the WebSocketManager.
@@ -16,7 +21,13 @@ class WebSocketManager:
         self.rooms: dict = {}
         self.pubsub_client = RedisPubSubManager()
 
-    async def add_user_to_room(self, room_id: str, websocket: WebSocket) -> None:
+    def get_room(self,room_id):
+        try:
+            return self.rooms[room_id]
+        except:
+            return []
+
+    async def add_user_to_room(self, room_id: str, websocket: WebSocket,user_id) -> None:
         """
         Adds a user's WebSocket connection to a room.
 
@@ -24,8 +35,10 @@ class WebSocketManager:
             room_id (str): Room ID or channel name.
             websocket (WebSocket): WebSocket connection object.
         """
+        
+        
         await websocket.accept()
-
+        
         if room_id in self.rooms:
             self.rooms[room_id].append(websocket)
         else:
